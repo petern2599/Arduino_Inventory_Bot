@@ -1,8 +1,4 @@
 #define max_pwm 255
-#define min_pwm 60
-#define min_turn_pwm 220
-
-#define Pi 3.14159
 
 #define INPUT_SIZE 2
 #define BUFFER_SIZE 70
@@ -32,7 +28,8 @@ int left_wheel_encA = 3;
 int left_wheel_encB = 5;
 int right_wheel_encA = 2;
 int right_wheel_encB = 4;
-int enc_to_rev_conversion = 170;
+const float enc_to_rev = 513.5;
+const float rpm_to_radians = 0.10471975512;
 
 char *token;
 const char *delimiter =",";
@@ -94,25 +91,25 @@ void loop() {
   char vel_l[10], vel_r[10];
 
   //Converts encoder pulses to rpm
-  float left_rpm = ((left_count_pulses/enc_to_rev_conversion)/100)*1000*60;
-  float right_rpm = ((right_count_pulses/enc_to_rev_conversion)/100)*1000*60;
+  float left_rpm = left_count_pulses/enc_to_rev * (60/0.1);
+  float right_rpm = right_count_pulses/enc_to_rev * (60/0.1);
   //Converts rpm to rad/s
-  float left_rad_s = (left_rpm*(2*Pi))/60;
-  float right_rad_s = (right_rpm*(2*Pi))/60;
+  float left_rad_s = left_rpm*rpm_to_radians;
+  float right_rad_s = right_rpm*rpm_to_radians;
   //Converts angular velocity in rad/s to linear velocity in m/s
   float left_m_s = left_rad_s*(0.065/2);
   float right_m_s = right_rad_s*(0.065/2);
 
   //Convert float values to string format in char variables
-  dtostrf(a.acceleration.x,4,2,accel_x);
-  dtostrf(a.acceleration.y,4,2,accel_y);
-  dtostrf(a.acceleration.z,4,2,accel_z);
-  dtostrf(g.gyro.x,4,2,gyro_x);
-  dtostrf(g.gyro.y,4,2,gyro_y);
-  dtostrf(g.gyro.z,4,2,gyro_z);
-  dtostrf(temp.temperature,4,2,temperature);
-  dtostrf(left_m_s,4,2,vel_l);
-  dtostrf(right_m_s,4,2,vel_r);
+  dtostrf(a.acceleration.x,4,3,accel_x);
+  dtostrf(a.acceleration.y,4,3,accel_y);
+  dtostrf(a.acceleration.z,4,3,accel_z);
+  dtostrf(g.gyro.x,4,3,gyro_x);
+  dtostrf(g.gyro.y,4,3,gyro_y);
+  dtostrf(g.gyro.z,4,3,gyro_z);
+  dtostrf(temp.temperature,4,3,temperature);
+  dtostrf(left_m_s,4,3,vel_l);
+  dtostrf(right_m_s,4,3,vel_r);
 
   //Append char values into buffer to send through serial
   sprintf(buffer,"%s,%s,%s,%s,%s,%s,%s,%s,%s",
@@ -150,19 +147,19 @@ void loop() {
 
 void left_encoder(){
   if(digitalRead(left_wheel_encB) == HIGH){
-    left_count_pulses--;
+    left_count_pulses++;
   }
   else{
-    left_count_pulses++;
+    left_count_pulses--;
   }
 }
 
 void right_encoder(){
   if(digitalRead(right_wheel_encB) == HIGH){
-    right_count_pulses++;
+    right_count_pulses--;
   }
   else{
-    right_count_pulses--;
+    right_count_pulses++;
   }
 }
 
@@ -192,20 +189,20 @@ void moveForward(float linear){
   digitalWrite(in3,HIGH);
   digitalWrite(in4,LOW);
 
-  int left_encoder_speed = min_pwm + abs(min_pwm*linear);
-  int right_encoder_speed = min_pwm + abs(min_pwm*linear);
+  int left_encoder_speed = int(abs(linear));
+  int right_encoder_speed = int(abs(linear));
 
   if (left_encoder_speed < max_pwm){
     analogWrite(enA,left_encoder_speed);
   }
   else{
-    analogWrite(enA,min_pwm);
+    analogWrite(enA,max_pwm);
   }
   if (right_encoder_speed < max_pwm){
     analogWrite(enB,right_encoder_speed);
   }
   else{
-    analogWrite(enB,min_pwm);
+    analogWrite(enB,max_pwm);
   }
 
 }
@@ -218,20 +215,20 @@ void moveBackward(float linear){
   digitalWrite(in3,LOW);  
   digitalWrite(in4,HIGH);
 
-  int left_encoder_speed = min_pwm + abs(min_pwm*linear);
-  int right_encoder_speed = min_pwm + abs(min_pwm*linear);
+  int left_encoder_speed = int(abs(linear));
+  int right_encoder_speed = int(abs(linear));
 
   if (left_encoder_speed < max_pwm){
     analogWrite(enA,left_encoder_speed);
   }
   else{
-    analogWrite(enA,min_pwm);
+    analogWrite(enA,max_pwm);
   }
   if (right_encoder_speed < max_pwm){
     analogWrite(enB,right_encoder_speed);
   }
   else{
-    analogWrite(enB,min_pwm);
+    analogWrite(enB,max_pwm);
   }
 
 }
@@ -245,20 +242,20 @@ void rotateLeft(float angular){
   digitalWrite(in3,HIGH); 
   digitalWrite(in4,LOW);
 
-  int left_encoder_speed = min_turn_pwm + abs(min_turn_pwm*angular);
-  int right_encoder_speed = min_turn_pwm + abs(min_turn_pwm*angular);
+  int left_encoder_speed = int(abs(angular));
+  int right_encoder_speed = int(abs(angular));
 
   if (left_encoder_speed < max_pwm){
     analogWrite(enA,left_encoder_speed);
   }
   else{
-    analogWrite(enA,min_turn_pwm);
+    analogWrite(enA,max_pwm);
   }
   if (right_encoder_speed < max_pwm){
     analogWrite(enB,right_encoder_speed);
   }
   else{
-    analogWrite(enB,min_turn_pwm);
+    analogWrite(enB,max_pwm);
   }
 }
 
@@ -278,20 +275,20 @@ void rotateRight(float angular){
   digitalWrite(in3,LOW);
   digitalWrite(in4,HIGH);
 
-  int left_encoder_speed = min_turn_pwm + abs(min_turn_pwm*angular);
-  int right_encoder_speed = min_turn_pwm + abs(min_turn_pwm*angular);
+  int left_encoder_speed = int(abs(angular));
+  int right_encoder_speed = int(abs(angular));
 
   if (left_encoder_speed < max_pwm){
     analogWrite(enA,left_encoder_speed);
   }
   else{
-    analogWrite(enA,min_turn_pwm);
+    analogWrite(enA,max_pwm);
   }
   if (right_encoder_speed < max_pwm){
     analogWrite(enB,right_encoder_speed);
   }
   else{
-    analogWrite(enB,min_turn_pwm);
+    analogWrite(enB,max_pwm);
   }
 }
 
@@ -299,10 +296,10 @@ void stop(){
   //Stops left motors
   digitalWrite(in1,LOW);
   digitalWrite(in2,LOW);
-  analogWrite(enA,min_pwm);
+  analogWrite(enA,0);
 
   //Stops right motors
   digitalWrite(in3,LOW);
   digitalWrite(in4,LOW);
-  analogWrite(enB,min_pwm);
+  analogWrite(enB,0);
 }
